@@ -3,5 +3,5 @@ whisper
 fastapi
 uvicorn
 python-dotenv
-pipecat-ai[webrtc,daily,deepgram,cartesia]
+pipecat-ai[webrtc,daily]
 pipecat-ai-small-webrtc-prebuilt
