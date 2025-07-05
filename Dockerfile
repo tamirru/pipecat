@@ -37,4 +37,4 @@ WORKDIR /app
 
 EXPOSE 8000
 # run
-CMD ["gunicorn", "--workers=2", "--log-level", "debug", "--chdir", "examples/foundational", "--capture-output", "daily-bot-manager:app", "--bind=0.0.0.0:8000"]
+CMD ["gunicorn", "--workers=2", "--log-level", "debug", "--chdir", "examples/foundational", "--capture-output", "04-transports-small-webrtc:app", "--bind=0.0.0.0:8000"]
