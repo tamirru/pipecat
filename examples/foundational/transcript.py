@@ -8,7 +8,7 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
 from pipecat.transports.base_transport import TransportParams
-from pipecat.services.openai.whisper import WhisperSTTService
+from pipecat.services.openai.stt import WhisperSTTService
 from pipecat_ai_small_webrtc_prebuilt.frontend import SmallWebRTCPrebuiltUI
 from loguru import logger
 import os
