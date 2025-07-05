@@ -1,4 +1,5 @@
 build
+onnxruntime
 whisper
 fastapi
 uvicorn
