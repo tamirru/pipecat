@@ -1,3 +1,4 @@
+whisper
 fastapi
 uvicorn
 python-dotenv
