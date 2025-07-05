@@ -18,8 +18,8 @@ RUN pip3 install gunicorn
 
 # Install system dependencies including libGL for OpenCV
 RUN apt clean
-RUN apt-get update
-RUN apt-get -y install build-essential libssl-dev ca-certificates libasound2 wget libgl1
+RUN apt-get update && \
+    apt-get -y install build-essential libssl-dev ca-certificates libasound2 wget ffmpeg
 
 # Setup OpenSSL manually (as required for some TTS services)
 RUN wget -O - https://www.openssl.org/source/openssl-1.1.1w.tar.gz | tar zxf -
