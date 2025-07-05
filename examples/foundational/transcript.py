@@ -8,9 +8,10 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
 from pipecat.transports.base_transport import TransportParams
-from pipecat.services.openai.stt import WhisperSTTService
 from pipecat_ai_small_webrtc_prebuilt.frontend import SmallWebRTCPrebuiltUI
 from loguru import logger
+from typing import Optional
+import aiohttp
 import os
 
 load_dotenv()
@@ -20,6 +21,26 @@ app.mount("/client", SmallWebRTCPrebuiltUI)
 
 pcs_map = {}
 ice_servers = [IceServer(urls="stun:stun.l.google.com:19302")]
+
+
+class WhisperSTTService:
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("Missing OPENAI_API_KEY")
+
+    async def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav") -> str:
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        data = aiohttp.FormData()
+        data.add_field("file", audio_bytes, filename=filename, content_type="audio/wav")
+        data.add_field("model", "whisper-1")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/audio/transcriptions", headers=headers, data=data) as resp:
+                resp.raise_for_status()
+                result = await resp.json()
+                return result["text"]
+
 
 async def run_whisper(webrtc_connection: SmallWebRTCConnection):
     logger.info("Bot started (whisper-only)")
@@ -33,26 +54,25 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
         ),
     )
 
-    stt = WhisperSTTService()
+    whisper = WhisperSTTService()
 
-    async def print_transcript(frame):
-        if frame.text:
-            print(f"User said: {frame.text}")
+    async def on_audio_frame(frame):
+        if frame.audio is not None:
+            transcript = await whisper.transcribe(frame.audio)
+            print(f"User said: {transcript}")
 
-    stt.event_handler("on_text")(print_transcript)
-
-    pipeline = Pipeline([
-        transport.input(),
-        stt
-    ])
+    pipeline = Pipeline([transport.input()])
+    pipeline.add_event_handler("on_audio_frame", on_audio_frame)
 
     task = PipelineTask(pipeline)
     runner = PipelineRunner(handle_sigint=False)
     await runner.run(task)
 
+
 @app.get("/", include_in_schema=False)
 async def root_redirect():
     return RedirectResponse(url="/client/")
+
 
 @app.post("/api/offer")
 async def offer(request: dict, background_tasks: BackgroundTasks):
