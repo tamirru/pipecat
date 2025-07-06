@@ -54,7 +54,7 @@ class WhisperProcessor(Processor):
             logger.info(f"User said: {transcript}")
         return frame
 
-async def run_whisper(webrtc_connection: SimpleWebRTCConnection):
+async def run_whisper(webrtc_connection: SmallWebRTCConnection):
     logger.info("Bot started (whisper-only)")
 
     transport = SmallWebRTCTransport(
