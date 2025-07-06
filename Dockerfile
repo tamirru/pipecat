@@ -12,6 +12,7 @@ COPY examples/ /app/examples/
 WORKDIR /app
 RUN ls --recursive /app/
 RUN pip3 install --upgrade -r requirements.txt
+RUN pip install build
 RUN python -m build .
 RUN pip3 install .
 RUN pip3 install gunicorn
