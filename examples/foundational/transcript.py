@@ -109,16 +109,12 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
         )
     else:
         logger.info("🆕 Creating new SmallWebRTCConnection")
-        try:
-            ice_servers = await fetch_metered_turn_credentials()
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to fetch Metered TURN credentials: {e}")
-            ice_servers = [IceServer(urls="stun:stun.l.google.com:19302")]
-
+        # --- PATCHED BLOCK START ---
+        ice_servers = await fetch_metered_turn_credentials()
         conn = SmallWebRTCConnection(
-            id=pc_id,
             ice_servers=ice_servers
         )
+        # --- PATCHED BLOCK END ---
 
         @conn.event_handler("connectionstatechange")
         async def on_state_change(state):
@@ -155,14 +151,14 @@ async def healthz():
 def test_import():
     from pipecat.processors.frame_processor import FrameProcessor
     return {"status": "import successful"}
-
+    
 async def fetch_metered_turn_credentials():
+    domain = os.getenv("METERED_DOMAIN", "canvue.metered.live")
+    secret_key = os.getenv("METERED_SECRET_KEY", "YBQno2PoKRum32RnV2CQ85RKdrw5HWUoOPKGdGgXa0Qn3mre")  # Replace with actual key or use env var
+
     async with httpx.AsyncClient() as client:
-        res = await client.post(
-            "https://canvue.metered.live/api/v1/turn/credentials",
-            headers={
-                "Authorization": "Bearer YBQno2PoKRum32RnV2CQ85RKdrw5HWUoOPKGdGgXa0Qn3mre"
-            },
+        res = await client.get(
+            f"https://{domain}/api/v1/turn-credentials?apiKey={secret_key}",
             timeout=10
         )
         res.raise_for_status()
@@ -173,5 +169,5 @@ async def fetch_metered_turn_credentials():
                 username=data["username"],
                 credential=data["credential"]
             )
-            for url in data["urls"]
+            for url in data["iceServers"]
         ]
