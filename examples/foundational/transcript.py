@@ -91,6 +91,7 @@ async def root_redirect():
 
 @app.post("/api/offer")
 async def offer(request: dict, background_tasks: BackgroundTasks):
+    logger.info(f"/api/offer received: {request}")
     pc_id = request.get("pc_id")
 
     if pc_id and pc_id in pcs_map:
