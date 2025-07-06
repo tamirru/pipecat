@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
-from pipecat.transports.network.simple_webrtc_connection import SimpleWebRTCConnection
+from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.transports.network.webrtc_connection import IceServer
 from pipecat.pipeline.processor import Processor
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -97,7 +97,7 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
             restart_pc=request.get("restart_pc", False),
         )
     else:
-        conn = SimpleWebRTCConnection(ice_servers)
+        conn = SmallWebRTCConnection(ice_servers)
         await conn.initialize(sdp=request["sdp"], type=request["type"])
 
         @conn.event_handler("closed")
