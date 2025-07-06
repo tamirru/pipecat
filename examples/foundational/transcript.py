@@ -126,13 +126,26 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
         @conn.event_handler("connectionstatechange")
         async def on_state_change(state):
             logger.debug(f"🔄 Connection state update: {state}")
+            if state == "connected":
+                logger.info("✅ WebRTC connection established")
+            elif state == "disconnected":
+                logger.warning("⚠️ WebRTC connection disconnected")
+            elif state == "failed":
+                logger.error("❌ WebRTC connection failed")
+            elif state == "closed":
+                logger.info("📴 WebRTC connection closed")
 
         await conn.initialize(sdp=request["sdp"], type=request["type"])
+        logger.info("📡 SDP answer prepared and ICE gathering started")
 
         # Log each ICE candidate as they are gathered
         @conn.event_handler("icecandidate")
         async def on_ice_candidate(event):
-            logger.info(f"🧊 ICE candidate gathered: {event}")
+            candidate = event.get('candidate')
+            if candidate:
+                logger.info(f"🧊 ICE candidate gathered: {candidate}")
+            else:
+                logger.info("✅ ICE gathering complete (null candidate)")
 
         @conn.event_handler("closed")
         async def handle_close(connection):
