@@ -1,11 +1,9 @@
+build
+onnxruntime
+whisper
 fastapi
 uvicorn[standard]
 aiohttp>=3.8.0
 python-dotenv
-openai
-whisper
-onnxruntime
-loguru
-
-pipecat-ai[webrtc,daily]==0.0.23
+pipecat-ai[webrtc,daily]
 pipecat-ai-small-webrtc-prebuilt
