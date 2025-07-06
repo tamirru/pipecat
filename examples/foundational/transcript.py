@@ -16,6 +16,10 @@ from typing import Optional
 import aiohttp
 import os
 
+# --- Pipecat version logging ---
+import pipecat
+logger.info(f"Pipecat version: {pipecat.__version__}")
+
 load_dotenv()
 
 app = FastAPI()
@@ -117,3 +121,10 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+# Test import endpoint for pipecat.pipeline.processor. Must be before return in /api/offer.
+@app.get("/test-import")
+def test_import():
+    from pipecat.pipeline.processor import Processor
+    return {"status": "import successful"}
