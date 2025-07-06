@@ -60,7 +60,7 @@ class WhisperProcessor(FrameProcessor):
         return frame
 
 async def run_whisper(webrtc_connection: SmallWebRTCConnection):
-    logger.info("Bot started (whisper-only)")
+    logger.info("🎙️ run_whisper() called")
 
     transport = SmallWebRTCTransport(
         webrtc_connection=webrtc_connection,
@@ -71,7 +71,20 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
         ),
     )
 
+    logger.info("🔧 Initializing Whisper service")
     whisper = WhisperSTTService()
+
+    class WhisperProcessor(FrameProcessor):
+        def __init__(self, whisper_service):
+            self.whisper_service = whisper_service
+
+        async def process_frame(self, frame, direction):
+            logger.info("🎛️ Processing frame...")
+            if frame.audio:
+                logger.info(f"🔊 Frame has audio: {len(frame.audio)} bytes")
+                transcript = await self.whisper_service.transcribe(frame.audio)
+                logger.info(f"📄 Transcription: {transcript}")
+            return frame
 
     processor = WhisperProcessor(whisper)
     pipeline = Pipeline([
@@ -79,6 +92,7 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
         processor,
     ])
 
+    logger.info("🏃 Running pipeline task")
     task = PipelineTask(pipeline)
     runner = PipelineRunner(handle_sigint=False)
     await runner.run(task)
@@ -91,26 +105,28 @@ async def root_redirect():
 
 @app.post("/api/offer")
 async def offer(request: dict, background_tasks: BackgroundTasks):
-    logger.info(f"/api/offer received: {request}")
+    logger.info(f"📨 Received /api/offer: {request}")
     pc_id = request.get("pc_id")
 
     if pc_id and pc_id in pcs_map:
         conn = pcs_map[pc_id]
-        logger.info(f"Reusing connection: {pc_id}")
+        logger.info(f"🔁 Reusing connection: {pc_id}")
         await conn.renegotiate(
             sdp=request["sdp"],
             type=request["type"],
             restart_pc=request.get("restart_pc", False),
         )
     else:
+        logger.info("🆕 Creating new SmallWebRTCConnection")
         conn = SmallWebRTCConnection(ice_servers)
         await conn.initialize(sdp=request["sdp"], type=request["type"])
 
         @conn.event_handler("closed")
         async def handle_close(connection):
-            logger.info(f"Closing: {connection.pc_id}")
+            logger.info(f"❌ Closing: {connection.pc_id}")
             pcs_map.pop(connection.pc_id, None)
 
+        logger.info("🚀 Scheduling run_whisper background task")
         background_tasks.add_task(run_whisper, conn)
 
     answer = conn.get_answer()
