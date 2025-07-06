@@ -36,5 +36,5 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 EXPOSE 8000
-CMD ["gunicorn", "--workers=2", "--worker-class=uvicorn.workers.UvicornWorker", "--log-level=debug", "--chdir=examples/foundational", "--capture-output", "transcript:app", "--bind=0.0.0.0:8000"]
+CMD ["gunicorn", "--workers=1", "--worker-class=uvicorn.workers.UvicornWorker", "--log-level=debug", "--chdir=examples/foundational", "--capture-output", "transcript:app", "--bind=0.0.0.0:8000"]
 

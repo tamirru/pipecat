@@ -15,6 +15,9 @@ from loguru import logger
 from typing import Optional
 import aiohttp
 import os
+import httpx
+from pipecat.webrtc.ice import IceServer
+
 
 # --- Pipecat version logging ---
 import pipecat
@@ -26,6 +29,7 @@ app = FastAPI()
 app.mount("/client", SmallWebRTCPrebuiltUI)
 
 pcs_map = {}
+
 ice_servers = [IceServer(urls="stun:stun.l.google.com:19302")]
 
 
@@ -74,18 +78,6 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
     logger.info("🔧 Initializing Whisper service")
     whisper = WhisperSTTService()
 
-    class WhisperProcessor(FrameProcessor):
-        def __init__(self, whisper_service):
-            self.whisper_service = whisper_service
-
-        async def process_frame(self, frame, direction):
-            logger.info("🎛️ Processing frame...")
-            if frame.audio:
-                logger.info(f"🔊 Frame has audio: {len(frame.audio)} bytes")
-                transcript = await self.whisper_service.transcribe(frame.audio)
-                logger.info(f"📄 Transcription: {transcript}")
-            return frame
-
     processor = WhisperProcessor(whisper)
     pipeline = Pipeline([
         transport.input(),
@@ -118,13 +110,27 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
         )
     else:
         logger.info("🆕 Creating new SmallWebRTCConnection")
-        conn = SmallWebRTCConnection(ice_servers)
+        try:
+            ice_servers = await fetch_metered_turn_credentials()
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to fetch Metered TURN credentials: {e}")
+            ice_servers = [IceServer(urls="stun:stun.l.google.com:19302")]
+
+        conn = SmallWebRTCConnection(
+            id=pc_id,
+            ice_servers=ice_servers
+        )
 
         @conn.event_handler("connectionstatechange")
         async def on_state_change(state):
-            logger.info(f"[WebRTC] Connection state: {state}")
+            logger.info(f"⚠️ [WebRTC] connection state changed: {state}")
 
         await conn.initialize(sdp=request["sdp"], type=request["type"])
+
+        # Log each ICE candidate as they are gathered
+        @conn.event_handler("icecandidate")
+        async def on_ice_candidate(event):
+            logger.info(f"🧊 ICE candidate gathered: {event}")
 
         @conn.event_handler("closed")
         async def handle_close(connection):
@@ -150,3 +156,23 @@ async def healthz():
 def test_import():
     from pipecat.processors.frame_processor import FrameProcessor
     return {"status": "import successful"}
+
+async def fetch_metered_turn_credentials():
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            "https://canvue.metered.live/api/v1/turn/credentials",
+            headers={
+                "Authorization": "Bearer YBQno2PoKRum32RnV2CQ85RKdrw5HWUoOPKGdGgXa0Qn3mre"
+            },
+            timeout=10
+        )
+        res.raise_for_status()
+        data = res.json()
+        return [
+            IceServer(
+                urls=url,
+                username=data["username"],
+                credential=data["credential"]
+            )
+            for url in data["urls"]
+        ]
