@@ -5,5 +5,5 @@ fastapi
 uvicorn[standard]
 aiohttp>=3.8.0
 python-dotenv
-pipecat-ai[webrtc,daily]
+pipecat‑ai[webrtc,whisper,daily]==0.0.74
 pipecat-ai-small-webrtc-prebuilt

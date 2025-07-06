@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.transports.network.webrtc_connection import IceServer
-from pipecat.pipeline.base import Processor
+from pipecat.processors.frame_processor import FrameProcessor
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -18,7 +18,7 @@ import os
 
 # --- Pipecat version logging ---
 import pipecat
-logger.info(f"Pipecat version: {pipecat.__version__}")
+logger.info(f"Pipecat version installed: {pipecat.__version__}")
 
 load_dotenv()
 
@@ -48,14 +48,14 @@ class WhisperSTTService:
                 result = await resp.json()
                 return result["text"]
 
-class WhisperProcessor(Processor):
+class WhisperProcessor(FrameProcessor):
     def __init__(self, whisper_service):
+        super().__init__()
         self.whisper_service = whisper_service
 
-    async def process(self, frame):
+    async def process_frame(self, frame, direction):
         if frame.audio:
             transcript = await self.whisper_service.transcribe(frame.audio)
-            print(f"User said: {transcript}")
             logger.info(f"User said: {transcript}")
         return frame
 
@@ -119,12 +119,12 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
 
 # Health check endpoint
 @app.get("/healthz")
-def healthz():
+async def healthz():
     return {"status": "ok"}
 
 
 # Test import endpoint for pipecat.pipeline.processor. Must be before return in /api/offer.
 @app.get("/test-import")
 def test_import():
-    from pipecat.pipeline.base import Processor
+    from pipecat.processors.frame_processor import FrameProcessor
     return {"status": "import successful"}
