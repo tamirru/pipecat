@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
 from pipecat.transports.network.webrtc_connection import SmallWebRTCConnection
 from pipecat.transports.network.webrtc_connection import IceServer
-from pipecat.pipeline.processor import Processor
+from pipecat.pipeline.base import Processor
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
