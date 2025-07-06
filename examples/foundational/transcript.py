@@ -2,7 +2,9 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
-from pipecat.transports.network.webrtc_connection import IceServer, SmallWebRTCConnection
+from pipecat.transports.network.simple_webrtc_connection import SimpleWebRTCConnection
+from pipecat.transports.network.webrtc_connection import IceServer
+from pipecat.pipeline.processor import Processor
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -41,6 +43,16 @@ class WhisperSTTService:
                 result = await resp.json()
                 return result["text"]
 
+class WhisperProcessor(Processor):
+    def __init__(self, whisper_service):
+        self.whisper_service = whisper_service
+
+    async def process(self, frame):
+        if frame.audio:
+            transcript = await self.whisper_service.transcribe(frame.audio)
+            print(f"User said: {transcript}")
+            logger.info(f"User said: {transcript}")
+        return frame
 
 async def run_whisper(webrtc_connection: SmallWebRTCConnection):
     logger.info("Bot started (whisper-only)")
@@ -56,13 +68,11 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
 
     whisper = WhisperSTTService()
 
-    async def on_audio_frame(frame):
-        if frame.audio is not None:
-            transcript = await whisper.transcribe(frame.audio)
-            print(f"User said: {transcript}")
-
-    pipeline = Pipeline([transport.input()])
-    pipeline.add_event_handler("on_audio_frame", on_audio_frame)
+    processor = WhisperProcessor(whisper)
+    pipeline = Pipeline([
+        transport.input(),
+        processor,
+    ])
 
     task = PipelineTask(pipeline)
     runner = PipelineRunner(handle_sigint=False)
@@ -87,7 +97,7 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
             restart_pc=request.get("restart_pc", False),
         )
     else:
-        conn = SmallWebRTCConnection(ice_servers)
+        conn = SimpleWebRTCConnection(ice_servers)
         await conn.initialize(sdp=request["sdp"], type=request["type"])
 
         @conn.event_handler("closed")
