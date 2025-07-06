@@ -119,6 +119,11 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
     else:
         logger.info("🆕 Creating new SmallWebRTCConnection")
         conn = SmallWebRTCConnection(ice_servers)
+
+        @conn.event_handler("connectionstatechange")
+        async def on_state_change(state):
+            logger.info(f"[WebRTC] Connection state: {state}")
+
         await conn.initialize(sdp=request["sdp"], type=request["type"])
 
         @conn.event_handler("closed")
