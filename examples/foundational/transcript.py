@@ -154,20 +154,20 @@ def test_import():
     
 async def fetch_metered_turn_credentials():
     domain = os.getenv("METERED_DOMAIN", "canvue.metered.live")
-    secret_key = os.getenv("METERED_SECRET_KEY", "YBQno2PoKRum32RnV2CQ85RKdrw5HWUoOPKGdGgXa0Qn3mre")  # Replace with actual key or use env var
+    secret_key = os.getenv("METERED_SECRET_KEY", "YBQno2PoKRum32RnV2CQ85RKdrw5HWUoOPKGdGgXa0Qn3mre")
 
     async with httpx.AsyncClient() as client:
         res = await client.get(
-            f"https://{domain}/api/v1/turn-credentials?apiKey={secret_key}",
+            f"https://{domain}/api/v1/turn/credentials?apiKey={secret_key}",
             timeout=10
         )
         res.raise_for_status()
         data = res.json()
         return [
             IceServer(
-                urls=url,
-                username=data["username"],
-                credential=data["credential"]
+                urls=entry["urls"],
+                username=entry.get("username"),
+                credential=entry.get("credential")
             )
-            for url in data["iceServers"]
+            for entry in data
         ]
