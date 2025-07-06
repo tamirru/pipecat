@@ -29,6 +29,7 @@ class WhisperSTTService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
+            logger.error("Missing OPENAI_API_KEY")
             raise ValueError("Missing OPENAI_API_KEY")
 
     async def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav") -> str:
