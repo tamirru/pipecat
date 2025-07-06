@@ -15,7 +15,6 @@ from loguru import logger
 from typing import Optional
 import aiohttp
 import os
-import httpx
 
 
 # --- Pipecat version logging ---
@@ -29,12 +28,10 @@ app.mount("/client", SmallWebRTCPrebuiltUI)
 
 pcs_map = {}
 
-ice_servers = [IceServer(urls="stun:stun.l.google.com:19302")]
-
-
 class WhisperSTTService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        logger.debug(f"🔑 Whisper API Key set: {'yes' if self.api_key else 'no'}")
         if not self.api_key:
             logger.error("Missing OPENAI_API_KEY")
             raise ValueError("Missing OPENAI_API_KEY")
@@ -58,8 +55,9 @@ class WhisperProcessor(FrameProcessor):
 
     async def process_frame(self, frame, direction):
         if frame.audio:
+            logger.debug("🎧 Audio frame received, sending to Whisper...")
             transcript = await self.whisper_service.transcribe(frame.audio)
-            logger.info(f"User said: {transcript}")
+            logger.info(f"📝 Transcription result: {transcript}")
         return frame
 
 async def run_whisper(webrtc_connection: SmallWebRTCConnection):
@@ -73,6 +71,9 @@ async def run_whisper(webrtc_connection: SmallWebRTCConnection):
             vad_analyzer=SileroVADAnalyzer(),
         ),
     )
+
+    logger.debug(f"Transport audio_in_enabled: {transport.params.audio_in_enabled}")
+    logger.debug(f"Transport audio_out_enabled: {transport.params.audio_out_enabled}")
 
     logger.info("🔧 Initializing Whisper service")
     whisper = WhisperSTTService()
@@ -110,19 +111,21 @@ async def offer(request: dict, background_tasks: BackgroundTasks):
     else:
         logger.info("🆕 Creating new SmallWebRTCConnection")
         conn = SmallWebRTCConnection(
-            ice_servers=[
-                IceServer(
-                    urls="turn:openrelay.metered.ca:80",
-                    username="aace885d29a1c3dd912192b1",
-                    credential="4Uuv6SsCyBMY//QH"
-                ),
-                IceServer(urls="stun:stun.l.google.com:19302"),
+            ice_servers = [
+                IceServer(urls="stun:stun.relay.metered.ca:80"),
+                IceServer(urls="turn:global.relay.metered.ca:80", username="aace885d29a1c3dd912192b1", credential="4Uuv6SsCyBMY//QH"),
+                IceServer(urls="turn:global.relay.metered.ca:80?transport=tcp", username="aace885d29a1c3dd912192b1", credential="4Uuv6SsCyBMY//QH"),
+                IceServer(urls="turn:global.relay.metered.ca:443", username="aace885d29a1c3dd912192b1", credential="4Uuv6SsCyBMY//QH"),
+                IceServer(urls="turns:global.relay.metered.ca:443?transport=tcp", username="aace885d29a1c3dd912192b1", credential="4Uuv6SsCyBMY//QH"),
             ]
         )
+        logger.info("🧊 Using ICE servers:")
+        for s in conn.ice_servers:
+            logger.info(f" - {s.urls} (username={s.username})")
 
         @conn.event_handler("connectionstatechange")
         async def on_state_change(state):
-            logger.info(f"⚠️ [WebRTC] connection state changed: {state}")
+            logger.debug(f"🔄 Connection state update: {state}")
 
         await conn.initialize(sdp=request["sdp"], type=request["type"])
 
