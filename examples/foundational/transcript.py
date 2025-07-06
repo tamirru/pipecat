@@ -16,7 +16,6 @@ from typing import Optional
 import aiohttp
 import os
 import httpx
-from pipecat.webrtc.ice import IceServer
 
 
 # --- Pipecat version logging ---
